@@ -41,7 +41,11 @@ const port = 3000;
 const server = http.createServer((req, res) => {
  res.statusCode = 200;
  res.setHeader('Content-Type', 'text/plain');
- res.end('Hello World\\=\n');
+ res.end("Encrypted message: " + encryptedData);
+ res.setHeader('Content-Type', 'text/plain');
+ res.end("Decrypted message: " + decryptedData);
+
+
 });
 
 server.listen(port, hostname, () => {
