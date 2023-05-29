@@ -36,15 +36,31 @@ const server = http.createServer((req, res) => {
       }
     });
   } else if (req.url === '/notes' && req.method === 'GET') {
-    // Retrieve the decrypted notes from the server
-    const decryptedNotes = notes.map((note) => ({
-      note: decrypt(note.encryptedNote, Securitykey, initVector),
-      key: decrypt(note.encryptedKey, Securitykey, initVector),
+    // Retrieve the encrypted notes from the server
+    const encryptedNotes = notes.map((note) => ({
       encryptedNote: note.encryptedNote,
     }));
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(decryptedNotes));
+    res.end(JSON.stringify(encryptedNotes));
+  } else if (req.url === '/decrypt' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const { encryptedNote, key } = data;
+        const decryptedNote = decrypt(encryptedNote, Securitykey, initVector, key);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end(decryptedNote);
+      } catch (error) {
+        res.statusCode = 400;
+        res.end('Invalid request');
+      }
+    });
   } else if (req.url === '/') {
     // Serve the index.html file
     fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
@@ -69,24 +85,6 @@ const server = http.createServer((req, res) => {
         res.end(data);
       }
     });
-  } else if (req.url === '/decrypt' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => {
-      body += chunk;
-    });
-    req.on('end', () => {
-      try {
-        const data = JSON.parse(body);
-        const { encryptedNote, encryptedKey, key } = data;
-        const decryptedNote = decrypt(encryptedNote, decrypt(encryptedKey, Securitykey, initVector), key);
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'text/plain');
-        res.end(decryptedNote);
-      } catch (error) {
-        res.statusCode = 400;
-        res.end('Invalid request');
-      }
-    });
   } else {
     res.statusCode = 404;
     res.end('Not found');
@@ -105,9 +103,22 @@ function encrypt(data, key, iv) {
   return encryptedData;
 }
 
-function decrypt(encryptedData, key, iv) {
-  const decipher = crypto.createDecipheriv(algorithm, key, iv);
+function decrypt(encryptedData, key, iv, userKey) {
+  const decryptedKey = decryptData(key, Securitykey, initVector, userKey);
+  const decipher = crypto.createDecipheriv(algorithm, decryptedKey, iv);
   let decryptedData = decipher.update(encryptedData, 'hex', 'utf-8');
   decryptedData += decipher.final('utf-8');
   return decryptedData;
+}
+
+function decryptData(encryptedData, key, iv, userKey) {
+  const decipher = crypto.createDecipheriv(algorithm, key, iv);
+  let decryptedData = decipher.update(encryptedData, 'hex', 'utf-8');
+  decryptedData += decipher.final('utf-8');
+  const encryptedKey = encrypt(decryptedData, Securitykey, initVector);
+  if (encryptedKey === userKey) {
+    return decryptedData;
+  } else {
+    throw new Error('Invalid key');
+  }
 }
