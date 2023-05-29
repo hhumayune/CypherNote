@@ -11,23 +11,20 @@
     <input type="text" id="note" name="note">
     <label for="key">Enter a key:</label>
     <input type="password" id="key" name="key">
-    <button id="saveButton">Save Note</button>
-    <button id="viewDecryptedButton">View Decrypted Notes</button>
+    <button id="saveButton">Save Note/View Decrypted Notes</button>
   </div>
   <h2>Notes:</h2>
   <ul id="notesList"></ul>
 
   <script>
     const saveButton = document.getElementById('saveButton');
-    const viewDecryptedButton = document.getElementById('viewDecryptedButton');
     const noteInput = document.getElementById('note');
     const keyInput = document.getElementById('key');
     const notesList = document.getElementById('notesList');
 
     saveButton.addEventListener('click', saveNote);
-    viewDecryptedButton.addEventListener('click', viewDecryptedNotes);
 
-    // Save note
+    // Save note or view decrypted notes
     function saveNote() {
       const note = noteInput.value;
       const key = keyInput.value;
@@ -46,7 +43,7 @@
               console.log('Note saved successfully');
               noteInput.value = '';
               keyInput.value = '';
-              getNotes();
+              viewDecryptedNotes();
             } else {
               console.error('Failed to save note:', response.statusText);
             }
@@ -54,38 +51,9 @@
           .catch(error => {
             console.error('Error:', error);
           });
+      } else if (key) {
+        viewDecryptedNotes();
       }
-    }
-
-    // Retrieve notes
-    function getNotes() {
-      fetch('/notes')
-        .then(response => {
-          if (response.ok) {
-            return response.json();
-          } else {
-            throw new Error('Failed to retrieve notes');
-          }
-        })
-        .then(notes => {
-          // Clear existing notes
-          notesList.innerHTML = '';
-
-          // Display retrieved notes
-          notes.forEach(note => {
-            const li = document.createElement('li');
-            // li.textContent = 'Note: ' + note.note;
-
-            const encryptedLi = document.createElement('li');
-            encryptedLi.textContent = 'Encrypted note: ' + note.encryptedNote;
-
-            notesList.appendChild(li);
-            notesList.appendChild(encryptedLi);
-          });
-        })
-        .catch(error => {
-          console.error('Error:', error);
-        });
     }
 
     // View decrypted notes
@@ -108,7 +76,11 @@
             // Display decrypted notes
             notes.forEach(note => {
               const li = document.createElement('li');
-              li.textContent = 'Note: ' + note.note + ' (Decrypted: ' + decrypt(note.encryptedNote, note.encryptedKey, key) + ')';
+              if (note.key === key) {
+                li.textContent = 'Note: ' + note.note;
+              } else {
+                li.textContent = 'Encrypted note: ' + note.encryptedNote;
+              }
 
               notesList.appendChild(li);
             });
@@ -118,23 +90,6 @@
           });
       }
     }
-
-    // Decrypt note
-    function decrypt(encryptedNote, encryptedKey, key) {
-      const decryptedKey = decryptData(encryptedKey, key);
-      return decryptData(encryptedNote, decryptedKey);
-    }
-
-    // Decrypt data
-    function decryptData(data, key) {
-      const decipher = crypto.createDecipher(algorithm, key);
-      let decryptedData = decipher.update(data, 'hex', 'utf-8');
-      decryptedData += decipher.final('utf-8');
-      return decryptedData;
-    }
-
-    // Initial retrieval of notes
-    getNotes();
   </script>
 </body>
 </html>
