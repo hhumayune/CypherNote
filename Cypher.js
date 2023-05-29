@@ -69,6 +69,24 @@ const server = http.createServer((req, res) => {
         res.end(data);
       }
     });
+  } else if (req.url === '/decrypt' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        const { encryptedNote, encryptedKey, key } = data;
+        const decryptedNote = decrypt(encryptedNote, decrypt(encryptedKey, Securitykey, initVector), key);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end(decryptedNote);
+      } catch (error) {
+        res.statusCode = 400;
+        res.end('Invalid request');
+      }
+    });
   } else {
     res.statusCode = 404;
     res.end('Not found');

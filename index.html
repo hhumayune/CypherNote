@@ -11,7 +11,7 @@
     <input type="text" id="note" name="note">
     <label for="key">Enter a key:</label>
     <input type="password" id="key" name="key">
-    <button id="saveButton">Save Note/View Decrypted Notes</button>
+    <button id="saveButton">Save Note</button>
   </div>
   <h2>Notes:</h2>
   <ul id="notesList"></ul>
@@ -24,7 +24,7 @@
 
     saveButton.addEventListener('click', saveNote);
 
-    // Save note or view decrypted notes
+    // Save note
     function saveNote() {
       const note = noteInput.value;
       const key = keyInput.value;
@@ -43,7 +43,7 @@
               console.log('Note saved successfully');
               noteInput.value = '';
               keyInput.value = '';
-              viewDecryptedNotes();
+              getNotes();
             } else {
               console.error('Failed to save note:', response.statusText);
             }
@@ -51,45 +51,79 @@
           .catch(error => {
             console.error('Error:', error);
           });
-      } else if (key) {
-        viewDecryptedNotes();
       }
     }
 
-    // View decrypted notes
-    function viewDecryptedNotes() {
-      const key = keyInput.value;
+    // Retrieve notes
+    function getNotes() {
+      fetch('/notes')
+        .then(response => {
+          if (response.ok) {
+            return response.json();
+          } else {
+            throw new Error('Failed to retrieve notes');
+          }
+        })
+        .then(notes => {
+          // Clear existing notes
+          notesList.innerHTML = '';
 
+          // Display retrieved notes
+          notes.forEach(note => {
+            const li = document.createElement('li');
+            li.textContent = 'Note: ' + note.note;
+
+            const decryptButton = document.createElement('button');
+            decryptButton.textContent = 'Decrypt';
+            decryptButton.addEventListener('click', () => {
+              decryptNoteAndDisplay(note.encryptedNote, note.encryptedKey);
+            });
+
+            const listItem = document.createElement('li');
+            listItem.appendChild(li);
+            listItem.appendChild(decryptButton);
+
+            notesList.appendChild(listItem);
+          });
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    }
+
+    // Decrypt note and display
+    function decryptNoteAndDisplay(encryptedNote, encryptedKey) {
+      const key = prompt('Enter the key to decrypt the note:');
       if (key) {
-        fetch('/notes')
+        const data = { encryptedNote, encryptedKey, key };
+        const requestOptions = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        };
+
+        fetch('/decrypt', requestOptions)
           .then(response => {
             if (response.ok) {
-              return response.json();
+              return response.text();
             } else {
-              throw new Error('Failed to retrieve notes');
+              throw new Error('Failed to decrypt note');
             }
           })
-          .then(notes => {
-            // Clear existing notes
-            notesList.innerHTML = '';
+          .then(decryptedNote => {
+            const decryptedLi = document.createElement('li');
+            decryptedLi.textContent = 'Decrypted note: ' + decryptedNote;
 
-            // Display decrypted notes
-            notes.forEach(note => {
-              const li = document.createElement('li');
-              if (note.key === key) {
-                li.textContent = 'Note: ' + note.note;
-              } else {
-                li.textContent = 'Encrypted note: ' + note.encryptedNote;
-              }
-
-              notesList.appendChild(li);
-            });
+            notesList.appendChild(decryptedLi);
           })
           .catch(error => {
             console.error('Error:', error);
           });
       }
     }
+
+    // Initial retrieval of notes
+    getNotes();
   </script>
 </body>
 </html>
