@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Notes App</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+  <h1>Notes App</h1>
+  <div>
+    <label for="note">Enter a note:</label>
+    <input type="text" id="note" name="note">
+    <label for="key">Enter a key:</label>
+    <input type="password" id="key" name="key">
+    <button id="saveButton">Save Note</button>
+    <button id="viewDecryptedButton">View Decrypted Notes</button>
+  </div>
+  <h2>Notes:</h2>
+  <ul id="notesList"></ul>
+
+  <script>
+    const saveButton = document.getElementById('saveButton');
+    const viewDecryptedButton = document.getElementById('viewDecryptedButton');
+    const noteInput = document.getElementById('note');
+    const keyInput = document.getElementById('key');
+    const notesList = document.getElementById('notesList');
+
+    saveButton.addEventListener('click', saveNote);
+    viewDecryptedButton.addEventListener('click', viewDecryptedNotes);
+
+    // Save note
+    function saveNote() {
+      const note = noteInput.value;
+      const key = keyInput.value;
+
+      if (note && key) {
+        const data = { note, key };
+        const requestOptions = {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        };
+
+        fetch('/notes', requestOptions)
+          .then(response => {
+            if (response.ok) {
+              console.log('Note saved successfully');
+              noteInput.value = '';
+              keyInput.value = '';
+              getNotes();
+            } else {
+              console.error('Failed to save note:', response.statusText);
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+          });
+      }
+    }
+
+    // Retrieve notes
+    function getNotes() {
+      fetch('/notes')
+        .then(response => {
+          if (response.ok) {
+            return response.json();
+          } else {
+            throw new Error('Failed to retrieve notes');
+          }
+        })
+        .then(notes => {
+          // Clear existing notes
+          notesList.innerHTML = '';
+
+          // Display retrieved notes
+          notes.forEach(note => {
+            const li = document.createElement('li');
+            // li.textContent = 'Note: ' + note.note;
+
+            const encryptedLi = document.createElement('li');
+            encryptedLi.textContent = 'Encrypted note: ' + note.encryptedNote;
+
+            notesList.appendChild(li);
+            notesList.appendChild(encryptedLi);
+          });
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    }
+
+    // View decrypted notes
+    function viewDecryptedNotes() {
+      const key = keyInput.value;
+
+      if (key) {
+        fetch('/notes')
+          .then(response => {
+            if (response.ok) {
+              return response.json();
+            } else {
+              throw new Error('Failed to retrieve notes');
+            }
+          })
+          .then(notes => {
+            // Clear existing notes
+            notesList.innerHTML = '';
+
+            // Display decrypted notes
+            notes.forEach(note => {
+              const li = document.createElement('li');
+              li.textContent = 'Note: ' + note.note + ' (Decrypted: ' + decrypt(note.encryptedNote, note.encryptedKey, key) + ')';
+
+              notesList.appendChild(li);
+            });
+          })
+          .catch(error => {
+            console.error('Error:', error);
+          });
+      }
+    }
+
+    // Decrypt note
+    function decrypt(encryptedNote, encryptedKey, key) {
+      const decryptedKey = decryptData(encryptedKey, key);
+      return decryptData(encryptedNote, decryptedKey);
+    }
+
+    // Decrypt data
+    function decryptData(data, key) {
+      const decipher = crypto.createDecipher(algorithm, key);
+      let decryptedData = decipher.update(data, 'hex', 'utf-8');
+      decryptedData += decipher.final('utf-8');
+      return decryptedData;
+    }
+
+    // Initial retrieval of notes
+    getNotes();
+  </script>
+</body>
+</html>
