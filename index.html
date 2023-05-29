@@ -103,13 +103,22 @@
             // Clear existing notes
             notesList.innerHTML = '';
 
-            // Display decrypted notes
-            notes.forEach(note => {
-              const decryptedNote = decryptNoteData(note.encryptedNote, key);
-              const li = document.createElement('li');
-              li.textContent = 'Decrypted note: ' + decryptedNote;
-              notesList.appendChild(li);
+            // Decrypt and display notes
+            const decryptedPromises = notes.map(note => {
+              return decryptNoteData(note.encryptedNote, note.encryptedKey, key);
             });
+
+            Promise.all(decryptedPromises)
+              .then(decryptedNotes => {
+                decryptedNotes.forEach(decryptedNote => {
+                  const li = document.createElement('li');
+                  li.textContent = 'Decrypted note: ' + decryptedNote;
+                  notesList.appendChild(li);
+                });
+              })
+              .catch(error => {
+                console.error('Error:', error);
+              });
           })
           .catch(error => {
             console.error('Error:', error);
@@ -118,8 +127,8 @@
     }
 
     // Decrypt note data
-    function decryptNoteData(encryptedNote, key) {
-      const data = { encryptedNote, key };
+    function decryptNoteData(encryptedNote, encryptedKey, key) {
+      const data = { encryptedNote, encryptedKey, key };
       const requestOptions = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
