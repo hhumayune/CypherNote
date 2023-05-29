@@ -12,20 +12,23 @@
     <label for="key">Enter a key:</label>
     <input type="password" id="key" name="key">
     <button id="saveButton">Save Note</button>
-    <button id="viewEncryptedButton">View Encrypted Notes</button>
   </div>
   <h2>Notes:</h2>
+  <p>Enter the key to view decrypted notes:</p>
+  <input type="password" id="decryptKey" name="decryptKey">
+  <button id="viewDecryptedButton">View Decrypted Notes</button>
   <ul id="notesList"></ul>
 
   <script>
     const saveButton = document.getElementById('saveButton');
-    const viewEncryptedButton = document.getElementById('viewEncryptedButton');
+    const viewDecryptedButton = document.getElementById('viewDecryptedButton');
     const noteInput = document.getElementById('note');
     const keyInput = document.getElementById('key');
+    const decryptKeyInput = document.getElementById('decryptKey');
     const notesList = document.getElementById('notesList');
 
     saveButton.addEventListener('click', saveNote);
-    viewEncryptedButton.addEventListener('click', viewEncryptedNotes);
+    viewDecryptedButton.addEventListener('click', viewDecryptedNotes);
 
     // Save note
     function saveNote() {
@@ -46,7 +49,7 @@
               console.log('Note saved successfully');
               noteInput.value = '';
               keyInput.value = '';
-              getEncryptedNotes();
+              getNotes();
             } else {
               console.error('Failed to save note:', response.statusText);
             }
@@ -58,7 +61,7 @@
     }
 
     // Retrieve encrypted notes
-    function getEncryptedNotes() {
+    function getNotes() {
       fetch('/notes')
         .then(response => {
           if (response.ok) {
@@ -71,7 +74,7 @@
           // Clear existing notes
           notesList.innerHTML = '';
 
-          // Display retrieved notes
+          // Display encrypted notes
           notes.forEach(note => {
             const li = document.createElement('li');
             li.textContent = 'Encrypted note: ' + note.encryptedNote;
@@ -83,48 +86,61 @@
         });
     }
 
-    // View encrypted notes
-    function viewEncryptedNotes() {
-      getEncryptedNotes();
-      notesList.innerHTML = '';
+    // View decrypted notes
+    function viewDecryptedNotes() {
+      const key = decryptKeyInput.value;
 
-      const decryptButton = document.createElement('button');
-      decryptButton.textContent = 'Decrypt Note';
-      decryptButton.addEventListener('click', decryptNote);
-      notesList.appendChild(decryptButton);
-    }
-
-    // Decrypt note
-    function decryptNote() {
-      const encryptedNote = prompt('Enter the encrypted note:');
-      const key = prompt('Enter the key:');
-      
-      if (encryptedNote && key) {
-        const data = { encryptedNote, key };
-        const requestOptions = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        };
-
-        fetch('/decrypt', requestOptions)
+      if (key) {
+        fetch('/notes')
           .then(response => {
             if (response.ok) {
-              return response.text();
+              return response.json();
             } else {
-              throw new Error('Failed to decrypt note');
+              throw new Error('Failed to retrieve notes');
             }
           })
-          .then(decryptedNote => {
-            const li = document.createElement('li');
-            li.textContent = 'Decrypted note: ' + decryptedNote;
-            notesList.appendChild(li);
+          .then(notes => {
+            // Clear existing notes
+            notesList.innerHTML = '';
+
+            // Display decrypted notes
+            notes.forEach(note => {
+              const decryptedNote = decryptNoteData(note.encryptedNote, key);
+              const li = document.createElement('li');
+              li.textContent = 'Decrypted note: ' + decryptedNote;
+              notesList.appendChild(li);
+            });
           })
           .catch(error => {
             console.error('Error:', error);
           });
       }
     }
+
+    // Decrypt note data
+    function decryptNoteData(encryptedNote, key) {
+      const data = { encryptedNote, key };
+      const requestOptions = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      };
+
+      return fetch('/decrypt', requestOptions)
+        .then(response => {
+          if (response.ok) {
+            return response.text();
+          } else {
+            throw new Error('Failed to decrypt note');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    }
+
+    // Initial retrieval of notes
+    getNotes();
   </script>
 </body>
 </html>

@@ -105,20 +105,12 @@ function encrypt(data, key, iv) {
 
 function decrypt(encryptedData, key, iv, userKey) {
   const decryptedKey = decryptData(key, Securitykey, initVector, userKey);
-  const decipher = crypto.createDecipheriv(algorithm, decryptedKey, iv);
-  let decryptedData = decipher.update(encryptedData, 'hex', 'utf-8');
-  decryptedData += decipher.final('utf-8');
-  return decryptedData;
+  return decryptData(encryptedData, decryptedKey, initVector);
 }
 
-function decryptData(encryptedData, key, iv, userKey) {
+function decryptData(data, key, iv) {
   const decipher = crypto.createDecipheriv(algorithm, key, iv);
-  let decryptedData = decipher.update(encryptedData, 'hex', 'utf-8');
+  let decryptedData = decipher.update(data, 'hex', 'utf-8');
   decryptedData += decipher.final('utf-8');
-  const encryptedKey = encrypt(decryptedData, Securitykey, initVector);
-  if (encryptedKey === userKey) {
-    return decryptedData;
-  } else {
-    throw new Error('Invalid key');
-  }
+  return decryptedData;
 }
