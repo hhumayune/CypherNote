@@ -4,6 +4,7 @@ const opn = require('opn');
 const fs = require('fs');
 const path = require('path');
 
+//aes-256 algo used
 const algorithm = 'aes-256-cbc';
 const initVector = crypto.randomBytes(16);
 const Securitykey = crypto.randomBytes(32);
@@ -59,14 +60,14 @@ const server = http.createServer((req, res) => {
         res.end(decryptedNote);
       } catch (error) {
         res.statusCode = 400;
-        res.end('Invalid request');
+        res.end('Error');
       }
     });
   } else if (req.url === '/') {
     fs.readFile(path.join(__dirname, 'index.html'), (err, content) => {
       if (err) {
         res.statusCode = 500;
-        res.end('Internal Server Error');
+        res.end('Error');
       } else {
         res.statusCode = 200;
         res.setHeader('Content-Type', 'text/html');
@@ -94,17 +95,19 @@ server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
   opn(`http://${hostname}:${port}/`);
 });
-
+//for encryption
 function encrypt(text, key, iv) {
   const cipher = crypto.createCipheriv(algorithm, key, iv);
   let encrypted = cipher.update(text, 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return encrypted;
 }
-
+//for decryption
 function decrypt(encryptedText, encryptedKey, iv) {
+  console.log("decrypt working")
   const decipher = crypto.createDecipheriv(algorithm, encryptedKey, iv);
   let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
   decrypted += decipher.final('utf8');
+  console.log(decrypted);
   return decrypted;
 }
